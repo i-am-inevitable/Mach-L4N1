@@ -29,10 +29,11 @@ class Inevitable:
     def Start( self ):
         self.defenseEnergy = 1
         self.attackEnergy = 0
+        self.energyChance = 2
         self.rechargeNow = False
         self.command = ""
         self.hold = False
-        self.game.connect(room = 'groupa')
+        self.game.connect(room = 'final')
         if self.game.register( username = 'Mach-L4N1', password = "LeilaniFlores" ):
             self.starkThread = Thread( target = self.Stark )
             self.starkThread.start()
@@ -312,6 +313,23 @@ class Inevitable:
                 self.hold = False
                 print( "Attack Mode Activated." )
                 print( "" )
+            elif data == "defend":
+                if len( self.data[ "edges" ] ) > 0:
+                    self.defenseEnergy = int( int( self.me.energy_source / 2 ) / len( self.data[ "edges" ] ) )
+                else:
+                    self.defenseEnergy = 1
+                print( "Defense Mode Activated." )
+                print( "" )
+            elif data == "recharge":
+                self.rechargeNow = True
+                self.energyChance = 1000
+                print( "Recharge Mode Activated." )
+                print( "" )
+            elif data == "normal":
+                self.rechargeNow = False
+                self.energyChance = 2
+                print( "Recharge Mode Deactivated." )
+                print( "" )
             else:
                 data = data.split()
                 if data[ 0 ] == "d":
@@ -320,6 +338,9 @@ class Inevitable:
                 elif data[ 0 ] == "a":
                     print( "Set attack energy to: " + data[ 1 ] )
                     self.attackEnergy = int( data[ 1 ] )
+                elif data[ 0 ] == "r":
+                    print( "Set attack energy to: " + data[ 1 ] )
+                    self.energyChance = int( data[ 1 ] )
 
     def Armor( self ):
         for edge in self.data[ "edges" ]:
@@ -368,14 +389,19 @@ class Inevitable:
 
     def AllSpark( self ):
         if not self.hold:
-            if random.choice( ( 0, 1 ) ) == 0:
-                self.UpgradeEnergy( 1 )
-                self.UpgradeEnergy( 2 )
-                self.BuildEnergy()
-            else:
+            if random.choice( range( self.energyChance ) ) == 0:
                 self.UpgradeGold( 1 )
                 self.UpgradeGold( 2 )
                 self.BuildGold()
+            else:
+                self.UpgradeEnergy( 1 )
+                self.UpgradeEnergy( 2 )
+                self.BuildEnergy()
+        else:
+            if self.rechargeNow:
+                self.UpgradeEnergy( 1 )
+                self.UpgradeEnergy( 2 )
+                self.BuildEnergy()
         self.Snap()
         self.Armor()
         if not self.hold:
