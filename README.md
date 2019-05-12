@@ -1,11 +1,16 @@
-# Requirements
+# Mach-L4N1
+The Mach-L4N1 is a gift for the one and only Leilani Garcia Flores, the reason that I even got started in Computer Science in the first place. Love you mom~
 
-You need >= python3.6 to run this script. The websocket part uses async/await
-syntax.
+```
+I am inevitable
+```
+*Clank!*
 
-You need ```websockets```. You can do ```pip3 install -r requirements.txt``` to
-install all the python package requirements.
+```
+I am Iron Man
+```
+*Snap!*
 
 # Run the bot
 
-```python3 example_ai.py```
+```python3 inevitable.py```
