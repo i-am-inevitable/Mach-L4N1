@@ -1,5 +1,6 @@
 from colorfight import Colorfight
 from colorfight.position import Position
+from threading import Thread
 import time
 import random
 from colorfight.constants import BLD_GOLD_MINE, BLD_ENERGY_WELL, BLD_FORTRESS
@@ -26,8 +27,15 @@ class Inevitable:
         pass
 
     def Start( self ):
-        self.game.connect(room = 'public')
-        if self.game.register( username = 'Inevitable', password = "LeilaniFlores" ):
+        self.defenseEnergy = 1
+        self.attackEnergy = 0
+        self.rechargeNow = False
+        self.command = ""
+        self.hold = False
+        self.game.connect(room = 'groupa')
+        if self.game.register( username = 'Mach-L4N1', password = "LeilaniFlores" ):
+            self.starkThread = Thread( target = self.Stark )
+            self.starkThread.start()
             while True:
                 if self.Refresh():
                     self.FetchInfo()
@@ -42,7 +50,7 @@ class Inevitable:
 
     def Attack( self, cell, energy = None ):
         if energy == None:
-            energy = cell.attack_cost
+            energy = cell.attack_cost + self.attackEnergy
         self.me.energy -= energy
         self.cmdList.append( self.game.attack( cell.position, energy ) )
         self.attackList.append( cell.position )
@@ -215,15 +223,15 @@ class Inevitable:
                                 self.data[ "adjacent" ][ "enemy" ][ "all" ].add( adj.position )
                                 adjType = adj.building.name
                                 if adjType == "empty":
-                                    self.data[ "own" ][ "empty" ].add( adj.position )
+                                    self.data[ "enemy" ][ "empty" ].add( adj.position )
                                 elif adjType == "home":
-                                    self.data[ "own" ][ "bases" ][ adj.building.level - 1 ].add( adj.position )
+                                    self.data[ "enemy" ][ "bases" ][ adj.building.level - 1 ].add( adj.position )
                                 elif adjType == "energy_well":
-                                    self.data[ "own" ][ "energy" ][ adj.building.level - 1 ].add( adj.position )
+                                    self.data[ "enemy" ][ "energy" ][ adj.building.level - 1 ].add( adj.position )
                                 elif adjType == "gold_mine":
-                                    self.data[ "own" ][ "gold" ][ adj.building.level - 1 ].add( adj.position )
+                                    self.data[ "enemy" ][ "gold" ][ adj.building.level - 1 ].add( adj.position )
                                 elif adjType == "fortress":
-                                    self.data[ "own" ][ "forts" ][ adj.building.level - 1 ].add( adj.position )
+                                    self.data[ "enemy" ][ "forts" ][ adj.building.level - 1 ].add( adj.position )
                             else:
                                 self.data[ "adjacent" ][ "empty" ].add( adj.position )
 
@@ -292,11 +300,32 @@ class Inevitable:
             if self.CanUpgrade( goldTarget ):
                 self.Upgrade( goldTarget )
 
+    def Stark( self ):
+        data = ""
+        while not data == "endgame":
+            data = input()
+            if data == "hold":
+                self.hold = True
+                print( "Holding Game State." )
+                print( "" )
+            elif data == "attack":
+                self.hold = False
+                print( "Attack Mode Activated." )
+                print( "" )
+            else:
+                data = data.split()
+                if data[ 0 ] == "d":
+                    print( "Set defense energy to: " + data[ 1 ] )
+                    self.defenseEnergy = int( data[ 1 ] )
+                elif data[ 0 ] == "a":
+                    print( "Set attack energy to: " + data[ 1 ] )
+                    self.attackEnergy = int( data[ 1 ] )
+
     def Armor( self ):
         for edge in self.data[ "edges" ]:
             edge = self.GetCell( edge )
             if self.me.energy >= 1:
-                self.Attack( edge, 1 )
+                self.Attack( edge, self.defenseEnergy )
 
     def Loot( self ):
         for i in ( 2, 1, 0 ):
@@ -338,41 +367,43 @@ class Inevitable:
                         self.Attack( base, snapCost )
 
     def AllSpark( self ):
-        if random.choice( ( 0, 1 ) ) == 0:
-            self.UpgradeEnergy( 1 )
-            self.UpgradeEnergy( 2 )
-            self.BuildEnergy()
-        else:
-            self.UpgradeGold( 1 )
-            self.UpgradeGold( 2 )
-            self.BuildGold()
+        if not self.hold:
+            if random.choice( ( 0, 1 ) ) == 0:
+                self.UpgradeEnergy( 1 )
+                self.UpgradeEnergy( 2 )
+                self.BuildEnergy()
+            else:
+                self.UpgradeGold( 1 )
+                self.UpgradeGold( 2 )
+                self.BuildGold()
         self.Snap()
         self.Armor()
-        order = random.choice( ( 0, 1, 2 ) )
-        if order == 0:
-            self.Dominate()
-            if random.choice( ( 0, 1 ) ) == 0:
+        if not self.hold:
+            order = random.choice( ( 0, 1, 2 ) )
+            if order == 0:
+                self.Dominate()
+                if random.choice( ( 0, 1 ) ) == 0:
+                    self.Recharge()
+                    self.Loot()
+                else:
+                    self.Loot()
+                    self.Recharge()
+            elif order == 1:
                 self.Recharge()
+                self.Dominate()
                 self.Loot()
-            else:
+            elif order == 2:
                 self.Loot()
+                self.Dominate()
                 self.Recharge()
-        elif order == 1:
-            self.Recharge()
-            self.Dominate()
-            self.Loot()
-        elif order == 2:
-            self.Loot()
-            self.Dominate()
-            self.Recharge()
             
     def GameLoop( self ):
-        print( str( len( self.data[ "edges" ] ) ) )
-        print( str( len( self.data[ "adjacent" ][ "empty" ] ) ) )
+        #print( str( len( self.data[ "edges" ] ) ) )
+        #print( str( len( self.data[ "adjacent" ][ "empty" ] ) ) )
         self.Defend()
         if self.tech == 1:
             self.Expand()
-        elif self.tech == 2:
+        elif self.tech == 2 and not self.rechargeNow:
             self.Bread()
         else:
             self.AllSpark()
